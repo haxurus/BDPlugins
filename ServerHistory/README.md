@@ -2,7 +2,7 @@
 
 A BetterDiscord plugin that keeps a local history of Discord servers and group DMs that become unavailable or disappear from your account.
 
-When Discord removes a server or group from the interface, there is often no visible record left behind. **Haxurus Server History** stores the name, ID, date, event type, and confidence level so you can review what happened later.
+When Discord removes a server or group from the interface, there is often no visible record left behind. **Server History** stores the name, ID, date, event type, and confidence level so you can review what happened later.
 
 ## Features
 
