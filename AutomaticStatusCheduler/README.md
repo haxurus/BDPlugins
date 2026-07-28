@@ -31,13 +31,13 @@ The plugin can offer to download the BDFDB Library automatically when it is miss
 
 ## Installation
 
-1. Download `HaxurusAutomaticStatusScheduler.plugin.js`.
+1. Download `AutomaticStatusScheduler.plugin.js`.
 2. Open Discord.
 3. Go to **User Settings → BetterDiscord → Plugins**.
 4. Select **Open Plugins Folder**.
-5. Copy `HaxurusAutomaticStatusScheduler.plugin.js` into that folder.
+5. Copy `AutomaticStatusScheduler.plugin.js` into that folder.
 6. Install and enable `0BDFDB.plugin.js` if requested.
-7. Enable **Haxurus Automatic Status Scheduler**.
+7. Enable **Automatic Status Scheduler**.
 8. Reload Discord if the plugin or library does not start immediately.
 
 ## Creating a schedule
@@ -59,7 +59,7 @@ The status prepared in Discord is saved immediately when **Set schedule** is sel
 
 Open:
 
-**User Settings → BetterDiscord → Plugins → Haxurus Automatic Status Scheduler → Settings**
+**User Settings → BetterDiscord → Plugins → Automatic Status Scheduler → Settings**
 
 The settings page shows every saved schedule with:
 
@@ -124,12 +124,6 @@ A rule with no text and no emoji clears the current custom status while still ap
 
 Schedules are stored locally through BetterDiscord's plugin data API.
 
-The plugin does not:
-
-- Read or store your Discord authentication token.
-- Send schedule data to an external service.
-- Require the separate `CustomStatusPresets` plugin to remain installed.
-
 Removing the plugin file does not necessarily remove its saved BetterDiscord data. Delete your schedules first if you also want to remove the stored rules.
 
 ## Troubleshooting
@@ -155,7 +149,7 @@ Reopen Discord's custom status editor, select the emoji and text again, and pres
 - Verify the computer's date, time, and time zone.
 - Check that the rule uses the intended days.
 - Reload Discord and wait a few seconds for the startup check.
-- Open the Developer Console and look for messages containing `HaxurusAutomaticStatusScheduler`.
+- Open the Developer Console and look for messages containing `AutomaticStatusScheduler`.
 
 ### A custom emoji is no longer displayed
 
