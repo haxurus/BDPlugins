@@ -1,8 +1,8 @@
-# Haxurus Automatic Status Scheduler
+# Automatic Status Scheduler
 
 A BetterDiscord plugin that lets you schedule Discord presence and custom status changes directly from Discord's native custom status editor.
 
-Instead of recreating Discord's emoji picker or maintaining a separate status editor, the plugin captures the status you already prepared in Discord — including Unicode emoji, custom server emoji, animated emoji, and text — and turns it into a recurring schedule.
+Instead of recreating Discord's emoji picker or maintaining a separate status editor, the plugin captures the status you already prepared in Discord - including Unicode emoji, custom server emoji, animated emoji, and text - and turns it into a recurring schedule.
 
 ## Features
 
@@ -25,7 +25,7 @@ Instead of recreating Discord's emoji picker or maintaining a separate status ed
 
 - Discord Desktop
 - [BetterDiscord](https://betterdiscord.app/)
-- `0BDFDB.plugin.js` — the BDFDB Library Plugin by DevilBro
+- `0BDFDB.plugin.js` - the BDFDB Library Plugin by DevilBro
 
 The plugin can offer to download the BDFDB Library automatically when it is missing. After installing the library, enable it and reload Discord.
 
@@ -47,10 +47,10 @@ The plugin can offer to download the BDFDB Library automatically when it is miss
 3. Enter the custom status text.
 4. Select **Set schedule** instead of the normal save button.
 5. Configure the rule:
-   - **Rule name** — a descriptive name for the schedule.
-   - **Time** — the local time at which the rule should become active.
-   - **Presence** — Online, Idle, Do Not Disturb, or Invisible.
-   - **Days** — the days of the week on which the rule applies.
+   - **Rule name** - a descriptive name for the schedule.
+   - **Time** - the local time at which the rule should become active.
+   - **Presence** - Online, Idle, Do Not Disturb, or Invisible.
+   - **Days** - the days of the week on which the rule applies.
 6. Select **Create schedule**.
 
 The status prepared in Discord is saved immediately when **Set schedule** is selected. The scheduling window then opens using the emoji and text captured from that saved status.
@@ -169,9 +169,9 @@ The plugin is intended for the official Discord desktop client with BetterDiscor
 
 ## Credits
 
-- **Haxurus** — plugin author
-- **DevilBro** — BDFDB Library and the `CustomStatusPresets` workflow that inspired the native custom-status capture approach
-- **BetterDiscord** — plugin platform and API
+- **Haxurus** - plugin author
+- **DevilBro** - BDFDB Library and the `CustomStatusPresets` workflow that inspired the native custom-status capture approach
+- **BetterDiscord** - plugin platform and API
 
 ## Disclaimer
 
