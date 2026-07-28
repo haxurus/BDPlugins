@@ -54,18 +54,18 @@ Each event includes a confidence level describing how reliable the detection is:
 
 ## Installation
 
-1. Download `HaxurusServerHistory.plugin.js`.
+1. Download `ServerHistory.plugin.js`.
 2. Open Discord.
 3. Go to **User Settings > BetterDiscord > Plugins**.
 4. Select **Open Plugins Folder**.
 5. Copy the plugin file into that folder.
-6. Return to Discord and enable **Haxurus Server History**.
+6. Return to Discord and enable **Server History**.
 
 The plugin does not require any external libraries.
 
 ## Usage
 
-Open BetterDiscord settings, go to **Plugins**, and click the settings icon next to **Haxurus Server History**.
+Open BetterDiscord settings, go to **Plugins**, and click the settings icon next to **Server History**.
 
 From the settings panel, you can:
 
@@ -156,7 +156,7 @@ Make sure the **Track group DMs** option is enabled in the plugin settings.
 The entire plugin is contained in:
 
 ```text
-HaxurusServerHistory.plugin.js
+ServerHistory.plugin.js
 ```
 
 No build process or additional dependencies are required. After editing the file, reload the plugin or restart Discord.
