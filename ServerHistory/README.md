@@ -1,4 +1,4 @@
-# Haxurus Server History
+# Server History
 
 A BetterDiscord plugin that keeps a local history of Discord servers and group DMs that become unavailable or disappear from your account.
 
