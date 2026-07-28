@@ -2,7 +2,7 @@
  * @name ServerHistory
  * @author Haxurus
  * @description Keeps a persistent history of Discord servers and group DMs that become unavailable or from which the account is removed.
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 module.exports = class ServerHistory {
@@ -28,13 +28,17 @@ module.exports = class ServerHistory {
         this.manualGuildActions = new Map();
         this.manualGroupActions = new Map();
         this.subscriptions = [];
+        this.storeUnsubscribers = [];
         this.timers = new Set();
         this.panelRoots = new Set();
         this.startedAt = 0;
         this.interval = null;
+        this.pendingStoreReconcile = null;
 
         this.onGuildDelete = this.handleGuildDelete.bind(this);
         this.onGuildCreate = this.handleGuildCreate.bind(this);
+        this.onGuildUnavailable = this.handleGuildUnavailable.bind(this);
+        this.onStoreChange = this.handleStoreChange.bind(this);
         this.onChannelDelete = this.handleChannelDelete.bind(this);
         this.onChannelCreate = this.handleChannelCreate.bind(this);
         this.onChannelUpdate = this.handleChannelUpdate.bind(this);
@@ -50,7 +54,7 @@ module.exports = class ServerHistory {
         this.addStyles();
 
         if (!this.GuildStore || !this.ChannelStore) {
-            this.api.UI.showToast("Haxurus Server History: unable to find the required Discord stores.", {type: "error"});
+            this.api.UI.showToast("Server History: unable to find the required Discord stores.", {type: "error"});
             this.api.Logger.error("Missing Discord stores", {
                 GuildStore: Boolean(this.GuildStore),
                 ChannelStore: Boolean(this.ChannelStore)
@@ -60,14 +64,16 @@ module.exports = class ServerHistory {
 
         this.patchManualActions();
         this.subscribeToEvents();
+        this.subscribeToStores();
         this.seedCurrentEntities();
+        this.syncUnavailableGuildsFromStore();
         this.scheduleReconciliation(8000);
         this.scheduleReconciliation(20000);
 
         const seconds = Math.max(10, Number(this.settings.reconciliationInterval) || 15);
         this.interval = setInterval(() => this.reconcile(), seconds * 1000);
 
-        this.api.UI.showToast("Haxurus Server History is active.", {type: "success"});
+        this.api.UI.showToast("Server History is active.", {type: "success"});
     }
 
     stop() {
@@ -80,6 +86,17 @@ module.exports = class ServerHistory {
             }
         }
         this.subscriptions = [];
+
+        for (const unsubscribe of this.storeUnsubscribers) {
+            try {
+                unsubscribe();
+            }
+            catch (error) {
+                this.api.Logger.warn("Unable to remove a Discord store listener", error);
+            }
+        }
+        this.storeUnsubscribers = [];
+        this.pendingStoreReconcile = null;
 
         if (this.interval) clearInterval(this.interval);
         this.interval = null;
@@ -95,7 +112,8 @@ module.exports = class ServerHistory {
     loadData() {
         try {
             this.settings = Object.assign({}, this.defaults, this.api.Data.load("settings") || {});
-            this.history = Array.isArray(this.api.Data.load("history")) ? this.api.Data.load("history") : [];
+            const storedHistory = this.api.Data.load("history");
+            this.history = Array.isArray(storedHistory) ? storedHistory : [];
             this.knownGuilds = this.api.Data.load("knownGuilds") || {};
             this.knownGroups = this.api.Data.load("knownGroups") || {};
         }
@@ -181,12 +199,15 @@ module.exports = class ServerHistory {
         const events = [
             ["GUILD_DELETE", this.onGuildDelete],
             ["GUILD_CREATE", this.onGuildCreate],
+            ["GUILD_UNAVAILABLE", this.onGuildUnavailable],
             ["CHANNEL_DELETE", this.onChannelDelete],
             ["CHANNEL_CREATE", this.onChannelCreate],
             ["CHANNEL_UPDATE", this.onChannelUpdate],
             ["CHANNEL_RECIPIENT_REMOVE", this.onRecipientRemove],
             ["CHANNEL_RECIPIENT_ADD", this.onRecipientAdd],
-            ["CONNECTION_OPEN", this.onConnectionOpen]
+            ["CONNECTION_OPEN", this.onConnectionOpen],
+            ["CONNECTION_RESUMED", this.onConnectionOpen],
+            ["POST_CONNECTION_OPEN", this.onConnectionOpen]
         ];
 
         for (const [event, handler] of events) {
@@ -198,6 +219,46 @@ module.exports = class ServerHistory {
                 this.api.Logger.warn(`Unable to subscribe to ${event}`, error);
             }
         }
+    }
+
+
+    subscribeToStores() {
+        const stores = [
+            ["GuildStore", this.GuildStore],
+            ["GuildAvailabilityStore", this.GuildAvailabilityStore],
+            ["ChannelStore", this.ChannelStore],
+            ["PrivateChannelSortStore", this.PrivateChannelSortStore]
+        ];
+
+        for (const [name, store] of stores) {
+            if (typeof store?.addChangeListener !== "function") continue;
+
+            try {
+                const returnedUnsubscribe = store.addChangeListener(this.onStoreChange);
+                if (typeof returnedUnsubscribe === "function") {
+                    this.storeUnsubscribers.push(returnedUnsubscribe);
+                }
+                else if (typeof store.removeChangeListener === "function") {
+                    this.storeUnsubscribers.push(() => store.removeChangeListener(this.onStoreChange));
+                }
+            }
+            catch (error) {
+                this.api.Logger.warn(`Unable to subscribe to ${name} changes`, error);
+            }
+        }
+    }
+
+    handleStoreChange() {
+        if (this.pendingStoreReconcile) {
+            clearTimeout(this.pendingStoreReconcile);
+            this.timers.delete(this.pendingStoreReconcile);
+        }
+
+        this.pendingStoreReconcile = this.schedule(() => {
+            this.pendingStoreReconcile = null;
+            this.syncUnavailableGuildsFromStore();
+            this.reconcile();
+        }, 350);
     }
 
     seedCurrentEntities() {
@@ -238,35 +299,53 @@ module.exports = class ServerHistory {
         if (groupsChanged) this.saveKnownGroups();
     }
 
+
+    handleGuildUnavailable(event) {
+        const guildId = this.extractGuildId(event);
+        if (!guildId) return;
+
+        const cachedGuild = this.getGuild(guildId);
+        const previous = this.knownGuilds[guildId] || (cachedGuild ? this.guildRecordFromGuild(cachedGuild) : null);
+        const name = previous?.name || cachedGuild?.name || `Server ${guildId}`;
+
+        if (this.settings.trackUnavailable && previous?.status !== "unavailable") {
+            this.addHistory({
+                entityType: "guild",
+                entityId: guildId,
+                name,
+                eventType: "guild_unavailable",
+                confidence: "certain",
+                description: "Discord reported the server as temporarily unavailable."
+            });
+        }
+
+        this.knownGuilds[guildId] = {
+            ...(previous || {id: guildId, name, firstSeenAt: Date.now()}),
+            id: guildId,
+            name,
+            status: "unavailable",
+            unavailableSince: previous?.unavailableSince || Date.now(),
+            updatedAt: Date.now()
+        };
+        this.missingGuildChecks.delete(guildId);
+        this.saveKnownGuilds();
+    }
+
     handleGuildDelete(event) {
         const guildId = this.extractGuildId(event);
         if (!guildId) return;
 
-        const unavailable = Boolean(event?.unavailable ?? event?.guild?.unavailable);
+        const unavailable = Boolean(
+            event?.unavailable ??
+            event?.guild?.unavailable ??
+            this.isGuildUnavailable(guildId)
+        );
         const cachedGuild = this.getGuild(guildId);
         const previous = this.knownGuilds[guildId] || (cachedGuild ? this.guildRecordFromGuild(cachedGuild) : null);
         const name = previous?.name || cachedGuild?.name || `Server ${guildId}`;
 
         if (unavailable) {
-            if (this.settings.trackUnavailable && previous?.status !== "unavailable") {
-                this.addHistory({
-                    entityType: "guild",
-                    entityId: guildId,
-                    name,
-                    eventType: "guild_unavailable",
-                    confidence: "certain",
-                    description: "Discord reported the server as temporarily unavailable."
-                });
-            }
-
-            this.knownGuilds[guildId] = {
-                ...(previous || {id: guildId, name}),
-                id: guildId,
-                name,
-                status: "unavailable",
-                unavailableSince: Date.now()
-            };
-            this.saveKnownGuilds();
+            this.handleGuildUnavailable({guildId});
             return;
         }
 
@@ -482,6 +561,7 @@ module.exports = class ServerHistory {
     }
 
     handleConnectionOpen() {
+        this.schedule(() => this.syncUnavailableGuildsFromStore(), 1500);
         this.scheduleReconciliation(5000);
         this.scheduleReconciliation(15000);
     }
@@ -498,11 +578,44 @@ module.exports = class ServerHistory {
     reconcileGuilds() {
         const current = this.getCurrentGuilds();
         const currentIds = new Set(Object.keys(current));
+        const unavailableIds = this.getUnavailableGuildIds();
         const knownIds = Object.keys(this.knownGuilds);
 
-        if (knownIds.length > 0 && currentIds.size === 0) return;
+        if (knownIds.length > 0 && currentIds.size === 0 && unavailableIds.size === 0) return;
 
         let changed = false;
+
+
+        for (const guildId of unavailableIds) {
+            if (currentIds.has(guildId)) continue;
+
+            const previous = this.knownGuilds[guildId];
+            const name = previous?.name || `Server ${guildId}`;
+
+            if (this.settings.trackUnavailable && previous?.status !== "unavailable") {
+                this.addHistory({
+                    entityType: "guild",
+                    entityId: guildId,
+                    name,
+                    eventType: "guild_unavailable",
+                    confidence: "certain",
+                    description: "Discord's availability store indicates that the server is temporarily unavailable."
+                });
+            }
+
+            if (!previous || previous.status !== "unavailable") {
+                this.knownGuilds[guildId] = {
+                    ...(previous || {id: guildId, name, firstSeenAt: Date.now()}),
+                    id: guildId,
+                    name,
+                    status: "unavailable",
+                    unavailableSince: previous?.unavailableSince || Date.now(),
+                    updatedAt: Date.now()
+                };
+                changed = true;
+            }
+            this.missingGuildChecks.delete(guildId);
+        }
 
         for (const guild of Object.values(current)) {
             const previous = this.knownGuilds[guild.id];
@@ -552,7 +665,7 @@ module.exports = class ServerHistory {
         const requiredChecks = Math.max(2, Number(this.settings.missingChecksRequired) || 3);
         for (const guildId of knownIds) {
             const previous = this.knownGuilds[guildId];
-            if (currentIds.has(guildId) || previous.status === "removed") continue;
+            if (currentIds.has(guildId) || unavailableIds.has(guildId) || previous.status === "removed") continue;
 
             const checks = (this.missingGuildChecks.get(guildId) || 0) + 1;
             this.missingGuildChecks.set(guildId, checks);
@@ -706,9 +819,78 @@ module.exports = class ServerHistory {
         }
     }
 
+
+    getUnavailableGuildIds() {
+        const result = new Set();
+
+        try {
+            const raw = this.GuildAvailabilityStore?.unavailableGuilds;
+
+            if (Array.isArray(raw)) {
+                for (const id of raw) if (id != null) result.add(String(id));
+            }
+            else if (raw instanceof Set || raw instanceof Map) {
+                for (const value of raw instanceof Map ? raw.keys() : raw.values()) {
+                    if (value != null) result.add(String(value));
+                }
+            }
+            else if (raw && typeof raw === "object") {
+                for (const [id, unavailable] of Object.entries(raw)) {
+                    if (unavailable) result.add(String(id));
+                }
+            }
+        }
+        catch (error) {
+            this.api.Logger.debug("Unable to read unavailable server IDs", error);
+        }
+
+        return result;
+    }
+
+    syncUnavailableGuildsFromStore() {
+        const unavailableIds = this.getUnavailableGuildIds();
+        if (unavailableIds.size === 0) return;
+
+        let changed = false;
+        for (const guildId of unavailableIds) {
+            const previous = this.knownGuilds[guildId];
+            const cachedGuild = this.getGuild(guildId);
+            const name = previous?.name || cachedGuild?.name || `Server ${guildId}`;
+
+            if (this.settings.trackUnavailable && previous?.status !== "unavailable") {
+                this.addHistory({
+                    entityType: "guild",
+                    entityId: guildId,
+                    name,
+                    eventType: "guild_unavailable",
+                    confidence: "certain",
+                    description: "Discord's availability store indicates that the server is temporarily unavailable."
+                });
+            }
+
+            if (!previous || previous.status !== "unavailable") {
+                this.knownGuilds[guildId] = {
+                    ...(previous || {id: guildId, name, firstSeenAt: Date.now()}),
+                    id: guildId,
+                    name,
+                    status: "unavailable",
+                    unavailableSince: previous?.unavailableSince || Date.now(),
+                    updatedAt: Date.now()
+                };
+                changed = true;
+            }
+            this.missingGuildChecks.delete(guildId);
+        }
+
+        if (changed) this.saveKnownGuilds();
+    }
+
     isGuildUnavailable(id) {
         try {
-            return Boolean(this.GuildAvailabilityStore?.isUnavailable?.(id));
+            if (typeof this.GuildAvailabilityStore?.isUnavailable === "function") {
+                return Boolean(this.GuildAvailabilityStore.isUnavailable(id));
+            }
+            return this.getUnavailableGuildIds().has(String(id));
         }
         catch (_) {
             return false;
