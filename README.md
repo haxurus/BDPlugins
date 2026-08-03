@@ -11,7 +11,7 @@ These plugins add practical features that are missing from the standard Discord 
 
 | Plugin | Version | Description | Requirements |
 | --- | ---: | --- | --- |
-| [Haxurus Lockscreen](./Lockscreen/) | `1.1.0` | Adds a local Discord lockscreen with 4-digit PIN, 6-digit PIN, password or Android-style pattern unlock, including startup and inactivity locking. | None |
+| [Haxurus Lockscreen](./Lockscreen/) | `1.1.1` | Adds a local Discord lockscreen with 4-digit PIN, 6-digit PIN, password or Android-style pattern unlock, including startup and inactivity locking. | None |
 | [Automatic Status Scheduler](./AutomaticStatusCheduler/) | `2.0.0` | Schedules recurring Discord presence and custom status changes directly from Discord's native custom status editor. | BDFDB Library |
 | [Server History](./ServerHistory/) | `1.1.0` | Keeps a local history of servers and group DMs that become unavailable, disappear or later return. | None |
 | [Advanced Blocked Users](./AdvancedBlockedUsers/) | `1.0.0` | Provides a searchable, sortable, paginated and exportable manager for the complete blocked-users list. | None |
