@@ -19,6 +19,7 @@ A BetterDiscord plugin that adds a local lockscreen to Discord using a PIN, pass
 - Allows the inactivity and temporary lockout durations to be configured.
 - Stores only a derived credential verifier and a random salt.
 - Uses a custom lockscreen interface without replacing Discord's internal pages.
+- Does not display a clock or date on the lockscreen.
 - Does not require external libraries.
 
 ## Unlock Methods
@@ -34,19 +35,19 @@ The selected credential must be entered twice when it is configured or changed.
 
 ## Installation
 
-1. Download `HaxurusLockscreen.plugin.js`.
+1. Download `Lockscreen.plugin.js`.
 2. Open Discord.
 3. Go to **User Settings > BetterDiscord > Plugins**.
 4. Select **Open Plugins Folder**.
 5. Copy the plugin file into that folder.
-6. Return to Discord and enable **Haxurus Lockscreen**.
+6. Return to Discord and enable **Lockscreen**.
 7. Open the plugin settings and configure an unlock method.
 
 The plugin does not require any external libraries.
 
 ## Usage
 
-Open BetterDiscord settings, go to **Plugins**, and click the settings icon next to **Haxurus Lockscreen**.
+Open BetterDiscord settings, go to **Plugins**, and click the settings icon next to **Lockscreen**.
 
 From the settings panel, you can:
 
@@ -167,7 +168,7 @@ The plugin cannot recover the original credential because it is not stored in pl
 The entire plugin is contained in:
 
 ```text
-HaxurusLockscreen.plugin.js
+Lockscreen.plugin.js
 ```
 
 No build process or additional dependencies are required. After editing the file, reload the plugin or restart Discord.
