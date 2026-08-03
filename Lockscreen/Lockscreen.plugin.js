@@ -1,7 +1,7 @@
 /**
  * @name Lockscreen
  * @author Haxurus
- * @version 1.1.0
+ * @version 1.1.1
  * @description Adds a local lockscreen to Discord with 4-digit PIN, 6-digit PIN, password, or Android-style pattern unlock.
  */
 
@@ -27,7 +27,6 @@ module.exports = class Lockscreen {
         this.locked = false;
         this.lastActivity = Date.now();
         this.inactivityTimer = null;
-        this.clockTimer = null;
         this.failedAttempts = 0;
         this.lockoutUntil = 0;
         this.lockoutTimer = null;
@@ -130,9 +129,7 @@ module.exports = class Lockscreen {
     }
 
     clearTimers() {
-        clearInterval(this.clockTimer);
         clearInterval(this.lockoutTimer);
-        this.clockTimer = null;
         this.lockoutTimer = null;
     }
 
@@ -189,11 +186,6 @@ module.exports = class Lockscreen {
                 <path d="M12 2 4.5 5v6.1c0 5.1 3.2 9.7 7.5 10.9 4.3-1.2 7.5-5.8 7.5-10.9V5L12 2Zm0 4.1a3 3 0 0 1 3 3v1.1h.7c.7 0 1.3.6 1.3 1.3v4.4c0 .7-.6 1.3-1.3 1.3H8.3c-.7 0-1.3-.6-1.3-1.3v-4.4c0-.7.6-1.3 1.3-1.3H9V9.1a3 3 0 0 1 3-3Zm0 1.8c-.7 0-1.2.5-1.2 1.2v1.1h2.4V9.1c0-.7-.5-1.2-1.2-1.2Z" />
             </svg>`;
 
-        const time = document.createElement("div");
-        time.className = "hls-time";
-        const date = document.createElement("div");
-        date.className = "hls-date";
-
         const title = document.createElement("h1");
         title.textContent = "Discord locked";
         const subtitle = document.createElement("p");
@@ -211,22 +203,10 @@ module.exports = class Lockscreen {
         footer.className = "hls-footer";
         footer.textContent = this.settings.enableShortcut ? "Quickly lock with Ctrl + Shift + L" : "Haxurus Lockscreen";
 
-        card.append(shield, time, date, title, subtitle, inputArea, error, footer);
+        card.append(shield, title, subtitle, inputArea, error, footer);
         overlay.append(card);
         document.body.append(overlay);
         this.overlay = overlay;
-
-        const updateClock = () => {
-            const now = new Date();
-            time.textContent = now.toLocaleTimeString("en-GB", {hour: "2-digit", minute: "2-digit"});
-            date.textContent = now.toLocaleDateString("en-GB", {
-                weekday: "long",
-                day: "numeric",
-                month: "long"
-            });
-        };
-        updateClock();
-        this.clockTimer = setInterval(updateClock, 1000);
 
         if (this.settings.method === "pin4" || this.settings.method === "pin6") {
             this.renderPinUnlock(inputArea, error);
@@ -245,9 +225,7 @@ module.exports = class Lockscreen {
     }
 
     removeOverlay(animate = true) {
-        clearInterval(this.clockTimer);
         clearInterval(this.lockoutTimer);
-        this.clockTimer = null;
         this.lockoutTimer = null;
 
         const overlay = this.overlay || document.getElementById("haxurus-lockscreen-overlay");
@@ -776,7 +754,7 @@ module.exports = class Lockscreen {
                             return false;
                         }
 
-                        instructions.textContent = "Pattern confermato";
+                        instructions.textContent = "Pattern confirmed";
                         status.textContent = "Press Save pattern to apply it.";
                         status.className = "hls-settings-status success";
                         return true;
@@ -1074,8 +1052,6 @@ module.exports = class Lockscreen {
             }
 
             .hls-shield svg { width: 32px; height: 32px; fill: white; }
-            .hls-time { font-size: 42px; line-height: 1; font-weight: 700; letter-spacing: -1px; }
-            .hls-date { margin-top: 8px; color: #b5bac1; font-size: 15px; text-transform: capitalize; }
             .hls-card h1 { margin: 24px 0 6px; font-size: 24px; line-height: 1.2; }
             .hls-subtitle { margin: 0; color: #b5bac1; font-size: 15px; }
             .hls-input-area { margin-top: 24px; }
@@ -1338,7 +1314,6 @@ module.exports = class Lockscreen {
 
             @media (max-width: 520px) {
                 .hls-card { padding: 24px 18px 20px; border-radius: 18px; }
-                .hls-time { font-size: 36px; }
                 .hls-setting-row { align-items: flex-start; flex-direction: column; gap: 10px; }
                 .hls-settings-input { width: 100%; }
             }
